@@ -1,0 +1,38 @@
+{
+  "world": "world",
+  "location": {
+    "x": -0.5,
+    "y": 100,
+    "z": -0.5
+  },
+  "interaction": {
+    "width": 1.5,
+    "height": 1.5,
+    "location": {
+      "x": -0.5,
+      "y": 95.2,
+      "z": -0.5
+    }
+  },
+  "fulcrum": {
+    "radius": 4,
+    "material": "minecraft:oak_log",
+    "left_rotation": {
+      "x": 0,
+      "y": 0,
+      "z": 0.707,
+      "w": 0.707
+    },
+    "right_rotation": {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "location": {
+      "x": -0.0001,
+      "y": 100,
+      "z": -1
+    }
+  }
+}
