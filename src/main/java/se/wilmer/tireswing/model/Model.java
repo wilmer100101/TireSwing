@@ -33,6 +33,7 @@ public final class Model {
             ItemDisplay itemDisplay = world.spawn(location, ItemDisplay.class, display -> {
                 display.setTransformation(modelData.transformation());
                 display.setItemStack(modelData.itemStack());
+                display.setPersistent(false);
             });
 
             ModelEntity modelEntity = new ModelEntity(modelData, itemDisplay);
@@ -44,7 +45,6 @@ public final class Model {
      * Removes all spawned model entities.
      */
     public void clear() {
-        modelEntities.forEach(modelEntity -> modelEntity.itemDisplay().remove());
         modelEntities.clear();
     }
 
@@ -55,6 +55,15 @@ public final class Model {
      */
     public List<ModelEntity> getModelEntities() {
         return Collections.unmodifiableList(modelEntities);
+    }
+
+    /**
+     * Returns an unmodifiable list of model datas.
+     *
+     * @return An unmodifiable list of model datas.
+     */
+    public List<ModelData> getModelDataList() {
+        return Collections.unmodifiableList(modelDataList);
     }
 }
 

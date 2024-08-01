@@ -231,6 +231,11 @@ public final class Configuration {
             rotationalModel = getModel(node.node("rotational"));
             ropeModel = getModel(node.node("rope"));
             stillModel = getModel(node.node("still"));
+
+            if (rotationalModel.getModelDataList().isEmpty() || ropeModel.getModelDataList().isEmpty() || stillModel.getModelDataList().isEmpty()) {
+                plugin.getComponentLogger().error("Every model most have one entity");
+                return false;
+            }
         } catch (SerializationException e) {
             plugin.getComponentLogger().error("Could not load models in model.json", e);
             return false;

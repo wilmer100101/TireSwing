@@ -25,12 +25,14 @@ public final class TireSwing extends JavaPlugin {
                 configuration.getLocation(),
                 configuration.getWorld()
         );
-        controller.createInteraction(configuration.getInteractionEntity());
-        controller.createFulcrum(configuration.getFulcrumEntity());
-        controller.spawn();
+        controller.spawn(
+                configuration.getInteractionEntity(),
+                configuration.getFulcrumEntity()
+        );
 
         Passenger passenger = new Passenger(controller);
         pluginManager.registerEvents(passenger, this);
+        pluginManager.registerEvents(controller, this);
     }
 
     @Override

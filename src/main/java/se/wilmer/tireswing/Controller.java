@@ -1,11 +1,17 @@
 package se.wilmer.tireswing;
 
+import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.event.world.EntitiesLoadEvent;
 import se.wilmer.tireswing.animation.Rotation;
 import se.wilmer.tireswing.animation.Swing;
 import se.wilmer.tireswing.entities.FulcrumEntity;
@@ -13,10 +19,12 @@ import se.wilmer.tireswing.entities.InteractionEntity;
 import se.wilmer.tireswing.model.ModelEntity;
 import se.wilmer.tireswing.model.Model;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.logging.Level;
 
 
-public final class Controller {
+public final class Controller implements Listener {
     /**
      * The TireSwing plugin instance.
      */
@@ -48,9 +56,24 @@ public final class Controller {
     private final Model stillModel;
 
     /**
+     * The location of the chunk that the item displays are in.
+     */
+    private final Location chunkLocation;
+
+    /**
      * The radius of the tire swing's swing.
      */
     private double radius;
+
+    /**
+     * The FulcrumEntity used.
+     */
+    private FulcrumEntity fulcrumEntity;
+
+    /**
+     * The InteractionEntity used.
+     */
+    private InteractionEntity interactionEntity;
 
     /**
      * The rotation of the tire swing.
@@ -68,11 +91,6 @@ public final class Controller {
     private ItemDisplay itemDisplay;
 
     /**
-     * The block display for the tire swing.
-     */
-    private BlockDisplay blockDisplay;
-
-    /**
      * Indicates whether the tire swing has a passenger.
      */
     private boolean hasPassenger = false;
@@ -85,12 +103,12 @@ public final class Controller {
     /**
      * Constructs a new Controller instance.
      *
-     * @param plugin The TireSwing plugin instance.
-     * @param stillModel The model used for the still part of the tire swing.
+     * @param plugin          The TireSwing plugin instance.
+     * @param stillModel      The model used for the still part of the tire swing.
      * @param rotationalModel The model used for the rotating part of the tire swing.
-     * @param ropeModel The model used for the rope part of the tire swing.
-     * @param location The location of the tire swing.
-     * @param world The world where the tire swing is located.
+     * @param ropeModel       The model used for the rope part of the tire swing.
+     * @param location        The location of the tire swing.
+     * @param world           The world where the tire swing is located.
      */
     public Controller(TireSwing plugin, Model stillModel, Model rotationalModel, Model ropeModel, Location location, World world) {
         this.plugin = plugin;
@@ -99,6 +117,19 @@ public final class Controller {
         this.rotationalModel = rotationalModel;
         this.location = location;
         this.world = world;
+        this.chunkLocation = new Location(world, location.getChunk().getX(), 0, location.getChunk().getZ());
+    }
+
+    @EventHandler()
+    public void onChunkLoad(ChunkLoadEvent event) {
+        if (validate()) {
+            return;
+        }
+
+        Chunk chunk = event.getChunk();
+        if (chunkLocation.getX() == chunk.getX() && chunkLocation.getZ() == chunk.getZ()) {
+            spawn(interactionEntity, fulcrumEntity);
+        }
     }
 
     /**
@@ -109,8 +140,17 @@ public final class Controller {
      * <p>
      * The first entity from the rotational model is the main item display,
      * and all other rotational item displays is added to it, so they also rotates.
+     *
+     * @param interactionEntity The interaction entity to create the interaction from.
+     * @param fulcrumEntity     The fulcrum entity to create the fulcrum from.
      */
-    public void spawn() {
+    public void spawn(InteractionEntity interactionEntity, FulcrumEntity fulcrumEntity) {
+        this.interactionEntity = interactionEntity;
+        this.fulcrumEntity = fulcrumEntity;
+
+        createInteraction(interactionEntity);
+        createFulcrum(fulcrumEntity);
+
         stillModel.spawn(location, world);
         ropeModel.spawn(location, world);
         rotationalModel.spawn(location, world);
@@ -134,10 +174,11 @@ public final class Controller {
      *
      * @param entity The interaction entity to create the interaction from.
      */
-    public void createInteraction(InteractionEntity entity) {
+    private void createInteraction(InteractionEntity entity) {
         interaction = world.spawn(entity.location(), Interaction.class, interaction -> {
             interaction.setInteractionHeight(entity.height());
             interaction.setInteractionWidth(entity.width());
+            interaction.setPersistent(false);
         });
     }
 
@@ -152,14 +193,14 @@ public final class Controller {
      *
      * @param entity The fulcrum entity to create the fulcrum from.
      */
-    public void createFulcrum(FulcrumEntity entity) {
-        blockDisplay = world.spawn(entity.location(), BlockDisplay.class, blockDisplay -> {
+    private void createFulcrum(FulcrumEntity entity) {
+        world.spawn(entity.location(), BlockDisplay.class, blockDisplay -> {
             blockDisplay.setBlock(entity.blockData());
             blockDisplay.setTransformation(entity.transformation());
+            blockDisplay.setPersistent(false);
         });
         radius = entity.radius();
     }
-
 
     /**
      * Starts the swinging animation for the tire swing with a player as passenger.
@@ -194,15 +235,22 @@ public final class Controller {
     }
 
     /**
-     * Validates all the entities that should be animated.
+     * Validates all the entities.
      *
-     * @return if all the entities is valid or not.
+     * @return if all the entities is valid.
      */
     public boolean validate() {
-        for (ModelEntity modelEntity : rotationalModel.getModelEntities()) {
-            if (!modelEntity.itemDisplay().isValid()) {
+        List<Model> models = List.of(ropeModel, rotationalModel, stillModel);
+        for (Model model : models) {
+            if (model.getModelEntities().isEmpty()) {
                 clear();
                 return false;
+            }
+            for (ModelEntity modelEntity : model.getModelEntities()) {
+                if (!modelEntity.itemDisplay().isValid()) {
+                    clear();
+                    return false;
+                }
             }
         }
         return true;
@@ -212,11 +260,6 @@ public final class Controller {
      * Clearing the swing.
      */
     public void clear() {
-        itemDisplay.eject();
-        itemDisplay.remove();
-        blockDisplay.remove();
-        interaction.remove();
-
         stillModel.clear();
         ropeModel.clear();
         rotationalModel.clear();
@@ -266,5 +309,4 @@ public final class Controller {
     public ItemDisplay getItemDisplay() {
         return itemDisplay;
     }
-
 }
